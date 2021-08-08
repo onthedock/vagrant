@@ -1,4 +1,4 @@
-# Lab: clúster de **k3s* con Vagrant
+# Lab: clúster de **k3s** con Vagrant
 
 ## Generar clave SSH
 
