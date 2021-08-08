@@ -1,0 +1,4 @@
+NAME    STATUS   ROLES    AGE    VERSION         INTERNAL-IP     EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION     CONTAINER-RUNTIME
+k3s-1   Ready    master   145m   v1.19.13+k3s1   192.168.1.101   <none>        Ubuntu 20.04.2 LTS   5.4.0-80-generic   containerd://1.4.8-k3s1
+k3s-2   Ready    <none>   145m   v1.19.13+k3s1   192.168.1.102   <none>        Ubuntu 20.04.2 LTS   5.4.0-80-generic   containerd://1.4.8-k3s1
+k3s-3   Ready    <none>   144m   v1.19.13+k3s1   192.168.1.103   <none>        Ubuntu 20.04.2 LTS   5.4.0-80-generic   containerd://1.4.8-k3s1

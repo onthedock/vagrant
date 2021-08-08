@@ -1,0 +1,2 @@
+Client Version: v1.22.0
+Server Version: v1.19.13+k3s1

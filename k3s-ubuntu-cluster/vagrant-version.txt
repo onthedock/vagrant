@@ -1,0 +1,4 @@
+Installed Version: 2.2.18
+Latest Version: 2.2.18
+ 
+You're running an up-to-date version of Vagrant!
