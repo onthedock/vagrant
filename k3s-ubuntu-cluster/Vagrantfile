@@ -1,0 +1,64 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+$bootstrap = <<-SCRIPT
+#!/bin/bash
+
+# Enable ssh password authentication
+echo "Enable ssh password authentication"
+sed -i 's/^PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
+# No need for root SSH login
+# sed -i 's/.*PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+systemctl reload sshd
+
+# Create operador user
+echo "Create user operador"
+useradd -s /bin/bash -m -G sudo -U operador
+echo "Set operador password"
+echo -e "admin\nadmin" | passwd operador >/dev/null 2>&1
+ 
+# Set Root password
+echo "Set root password"
+echo -e "admin\nadmin" | passwd root >/dev/null 2>&1
+SCRIPT
+
+Vagrant.configure("2") do |config|
+  # https://docs.vagrantup.com.
+
+  NodeCount = 3
+  
+  (1..NodeCount).each do |i|
+    config.vm.define "k3s-#{i}" do |node|
+      node.vm.box               = "ubuntu/focal64"
+      node.vm.box_check_update  = false
+      node.vm.box_version       = "20210803.0.0"
+      node.vm.hostname          = "k3s-#{i}.192.168.1.10#{i}.nip.io"
+      node.vm.network "public_network", ip: "192.168.1.10#{i}", bridge: 'wlp5s0'
+
+      # Create user operador
+      node.vm.provision "shell", inline: $bootstrap
+      
+      # Passwordless sudo
+      node.vm.provision "shell", inline: <<-SHELL
+		    echo "operador    ALL=(ALL) NOPASSWD:ALL" >> "/etc/sudoers.d/operador"
+      SHELL
+      
+      # Passwordless SSH access for operador
+      node.vm.provision "file", source: "~/.ssh/id_rsa.pub", destination: "/tmp/xavi.pub"
+      node.vm.provision "shell", inline: <<-SHELL
+        sudo su operador
+        sudo mkdir -p /home/operador/.ssh/
+        cat /tmp/xavi.pub >> /home/operador/.ssh/authorized_keys
+      SHELL
+
+      node.vm.synced_folder "/vagrant", disabled: true
+      
+      node.vm.provider :virtualbox do |v|
+        v.name    = "k3s-#{i}"
+        v.memory  = 2048
+        v.cpus    = 1
+
+      end
+    end
+  end
+end
