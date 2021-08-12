@@ -16,8 +16,6 @@ sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(l
 sudo apt-get update && sudo apt-get install vagrant
 ```
 
-
-
 ### Clúster k3s
 
 #### Instalación de las *Guest Additions*
@@ -117,6 +115,14 @@ Vagrant.configure("2") do |config|
   end
 end
 ```
+
+## Troubleshooting del aprovisionamiento con Vagrant
+
+Usa `vagrant reload` para reiniciar la VM.
+
+Si no funciona, puedes destruir una máquina específica con `vagrant destroy k3s-3` y recrearla de nuevo con `vagrant up`.
+
+Si la máquina ha arrancado correctamente pero ha fallado alguno de los *scripts* de *provisioning*, se puede lanzar específicamente mediante `vagrant provision k3s-3`.
 
 ## Install k3s using k3sup
 
