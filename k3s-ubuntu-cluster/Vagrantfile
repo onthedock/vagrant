@@ -52,7 +52,7 @@ Vagrant.configure("2") do |config|
         cat /tmp/xavi.pub >> /home/operador/.ssh/authorized_keys
       SHELL
 
-      node.vm.synced_folder "/vagrant", disabled: true
+      node.vm.synced_folder ".", "/vagrant", disabled: true
       
       node.vm.provider :virtualbox do |v|
         v.name    = "k3s-#{i}"
