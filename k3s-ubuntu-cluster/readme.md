@@ -48,7 +48,7 @@ En el `Vagrantfile` usamos varios *scripts* para realizar acciones sobre las má
 
 La configuración que permite al usuario `operador` elevar privilegios sin necesidad de requerir una contraseña es un requerimiento de **k3sup**.
 
-> Las partes relativas a la configuración del acceso vía SSH podría eliminarse del *script*; al crear el usuario `operador`, no es necesario habilitar el acceso para el usuario `root`. Además, una vez se ha copiado una clave SSH para el usuario `operador`, tampoco sería necesario habilitar el acceso con contraseña. 
+> Las partes relativas a la configuración del acceso vía SSH podría eliminarse del *script*; al crear el usuario `operador`, no es necesario habilitar el acceso para el usuario `root`. Además, una vez se ha copiado una clave SSH para el usuario `operador`, tampoco sería necesario habilitar el acceso con contraseña.
 
 ```ruby
 # -*- mode: ruby -*-
@@ -65,13 +65,26 @@ sed -i 's/^PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_
 systemctl reload sshd
 
 # Create operador user
-useradd -m -G sudo -U operador
+echo "Create user operador"
+useradd -s /bin/bash -m -G sudo -U operador
 echo "Set operador password"
 echo -e "admin\nadmin" | passwd operador >/dev/null 2>&1
  
 # Set Root password
 echo "Set root password"
 echo -e "admin\nadmin" | passwd root >/dev/null 2>&1
+SCRIPT
+
+$passwordlessSudo = <<-SCRIPT
+#!/bin/bash
+
+echo "operador    ALL=(ALL) NOPASSWD:ALL" >> "/etc/sudoers.d/operador"
+SCRIPT
+
+$networkDevice = <<-SCRIPT
+#!/bin/bash
+
+
 SCRIPT
 
 Vagrant.configure("2") do |config|
@@ -81,39 +94,47 @@ Vagrant.configure("2") do |config|
   
   (1..NodeCount).each do |i|
     config.vm.define "k3s-#{i}" do |node|
+      
+      # Provider configuration
+      node.vm.provider :virtualbox do |v|
+        v.name    = "k3s-#{i}"
+        v.memory  = 2048
+        v.cpus    = 1
+      end
+
+      # Base configuration
       node.vm.box               = "ubuntu/focal64"
-      node.vm.box_check_update  = false
       node.vm.box_version       = "20210803.0.0"
+      node.vm.box_check_update  = false
+      
       node.vm.hostname          = "k3s-#{i}.192.168.1.#{100+i}.nip.io"
-      node.vm.network "public_network", ip: "192.168.1.#{100+i}", bridge: 'wlp5s0'
+
+      # Public network configuration
+      node.vm.network "public_network", ip: "192.168.1.#{100+i}", bridge: 'wlp3s0'
+
+      # Disable sync folder
+      node.vm.synced_folder ".", "/vagrant", disabled: true
+      
+      # Plugin vagrant-vbguest configuration
+      node.vbguest.auto_update  = false
 
       # Create user operador
       node.vm.provision "shell", inline: $bootstrap
-        
-      # Passwordless sudo
-      node.vm.provision "shell", inline: <<-SHELL
-		echo "operador    ALL=(ALL) NOPASSWD:ALL" >> "/etc/sudoers.d/operador"
-      SHELL
-
-      # Provide SSH access to user operador
+      
+      # Passwordless sudo for "operador"
+      node.vm.provision "shell", inline: $passwordlessSudo
+      
+      # Passwordless SSH access for operador
       node.vm.provision "file", source: "~/.ssh/id_rsa.pub", destination: "/tmp/xavi.pub"
       node.vm.provision "shell", inline: <<-SHELL
         sudo su operador
         sudo mkdir -p /home/operador/.ssh/
         cat /tmp/xavi.pub >> /home/operador/.ssh/authorized_keys
       SHELL
-
-      node.vm.synced_folder "/vagrant", disabled: true
-      
-      node.vm.provider :virtualbox do |v|
-        v.name    = "k3s-#{i}"
-        v.memory  = 1024
-        v.cpus    = 1
-
-      end
     end
   end
 end
+
 ```
 
 ## Troubleshooting del aprovisionamiento con Vagrant
@@ -135,7 +156,7 @@ sudo install k3sup /usr/local/bin/
 
 Para validar la instalación, ejecutamos:
 
-```
+```bash
 $ k3sup version
  _    _____                 
 | | _|___ / ___ _   _ _ __
@@ -200,7 +221,7 @@ kubectl get nodes
 
 Los agentes no pueden contactar con el nodo `server` porque se está usando la tarjeta de red *por defecto* de Virtual Box, que está configurda como NAT (con IP 10.0.2.15):
 
-```
+```bash
 $ sudo journalctl -u k3s-agent
 ...
 level=info msg="Updating load balancer server addresses -> [10.0.2.15:6443 192.168.1.101:6443]"
@@ -212,4 +233,3 @@ Aug 08 09:52:18 k3s-2 k3s[17365]: time="2021-08-08T09:52:18.738679770Z" level=er
 ```
 
 La solución pasa por explicitar la tarjeta de red que debe usar Flannel mediante `--flannel-iface <device>`
-
