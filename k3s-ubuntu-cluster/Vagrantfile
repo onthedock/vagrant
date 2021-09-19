@@ -22,6 +22,7 @@ echo "Set root password"
 echo -e "admin\nadmin" | passwd root >/dev/null 2>&1
 SCRIPT
 
+$networkDevice = <<-SCRIPT
 Vagrant.configure("2") do |config|
   # https://docs.vagrantup.com.
 
@@ -34,7 +35,7 @@ Vagrant.configure("2") do |config|
       node.vbguest.auto_update   = false
       node.vm.box_version       = "20210803.0.0"
       node.vm.hostname          = "k3s-#{i}.192.168.1.10#{i}.nip.io"
-      node.vm.network "public_network", ip: "192.168.1.10#{i}", bridge: 'wlp5s0'
+      node.vm.network "public_network", ip: "192.168.1.10#{i}", bridge: 'wlp3s0'
 
       # Create user operador
       node.vm.provision "shell", inline: $bootstrap
