@@ -1,6 +1,7 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 NonRootUser = 'operador'
+SSHKey = '~/.ssh/id_rsa.pub'
 
 $newUser = <<-SCRIPT
 #!/bin/bash
@@ -62,7 +63,7 @@ Vagrant.configure("2") do |config|
       node.vm.provision "shell", inline: $passwordlessSudo
       
       # Passwordless SSH access for operador
-      node.vm.provision "file", source: "~/.ssh/id_rsa.pub", destination: "/tmp/tmp_id_rsa.pub"
+      node.vm.provision "file", source: "#{SSHKey}", destination: "/tmp/tmp_id_rsa.pub"
       node.vm.provision "shell", inline: $accessUsingSSHkey
     end
   end
