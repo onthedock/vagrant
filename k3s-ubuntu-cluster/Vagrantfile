@@ -1,34 +1,29 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
+NonRootUser = 'operador'
 
-$bootstrap = <<-SCRIPT
+$newUser = <<-SCRIPT
 #!/bin/bash
 
-# Enable ssh password authentication
-echo "Enable ssh password authentication"
-sed -i 's/^PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
-# No need for root SSH login
-# sed -i 's/.*PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
-systemctl reload sshd
-
 # Create operador user
-echo "Create user operador"
-useradd -s /bin/bash -m -G sudo -U operador
-echo "Set operador password"
-echo -e "admin\nadmin" | passwd operador >/dev/null 2>&1
- 
-# Set Root password
-echo "Set root password"
-echo -e "admin\nadmin" | passwd root >/dev/null 2>&1
+echo "Create user #{NonRootUser}"
+useradd -s /bin/bash -m -G sudo -U #{NonRootUser}
 SCRIPT
 
 $passwordlessSudo = <<-SCRIPT
 #!/bin/bash
 
-echo "operador    ALL=(ALL) NOPASSWD:ALL" >> "/etc/sudoers.d/operador"
+echo "#{NonRootUser}    ALL=(ALL) NOPASSWD:ALL" >> "/etc/sudoers.d/#{NonRootUser}"
 SCRIPT
 
-$networkDevice = <<-SCRIPT
+$accessUsingSSHkey = <<-SCRIPT
+#!/bin/bash
+
+sudo su #{NonRootUser}
+sudo mkdir -p /home/#{NonRootUser}/.ssh/
+cat /tmp/tmp_id_rsa.pub >> /home/#{NonRootUser}/.ssh/authorized_keys
+SCRIPT
+
 Vagrant.configure("2") do |config|
   # https://docs.vagrantup.com.
 
@@ -60,19 +55,15 @@ Vagrant.configure("2") do |config|
       # Plugin vagrant-vbguest configuration
       node.vbguest.auto_update  = false
 
-      # Create user operador
-      node.vm.provision "shell", inline: $bootstrap
+      # Create non-root user
+      node.vm.provision "shell", inline: $newUser
       
-      # Passwordless sudo for "operador"
+      # Passwordless sudo for non-root user
       node.vm.provision "shell", inline: $passwordlessSudo
       
       # Passwordless SSH access for operador
-      node.vm.provision "file", source: "~/.ssh/id_rsa.pub", destination: "/tmp/xavi.pub"
-      node.vm.provision "shell", inline: <<-SHELL
-        sudo su operador
-        sudo mkdir -p /home/operador/.ssh/
-        cat /tmp/xavi.pub >> /home/operador/.ssh/authorized_keys
-      SHELL
+      node.vm.provision "file", source: "~/.ssh/id_rsa.pub", destination: "/tmp/tmp_id_rsa.pub"
+      node.vm.provision "shell", inline: $accessUsingSSHkey
     end
   end
 end
