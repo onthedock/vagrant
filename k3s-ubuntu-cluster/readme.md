@@ -38,7 +38,7 @@ end
 
 ### Vagrantfile para provisionar las máquinas del clúster
 
-El objetivo es crear un clúster de 1 nodo *server* y dos nodos *agent*.
+El objetivo es crear un clúster de 1 nodo *server* y 2 nodos *agent*.
 
 A nivel de [*Vagrant*](https://www.vagrantup.com/docs/providers/virtualbox/), las tres máquinas se provisionan igual; la instalación de **k3s** se realiza después usando [**k3sup**](https://github.com/alexellis/k3sup).
 
@@ -48,43 +48,31 @@ En el `Vagrantfile` usamos varios *scripts* para realizar acciones sobre las má
 
 La configuración que permite al usuario `operador` elevar privilegios sin necesidad de requerir una contraseña es un requerimiento de **k3sup**.
 
-> Las partes relativas a la configuración del acceso vía SSH podría eliminarse del *script*; al crear el usuario `operador`, no es necesario habilitar el acceso para el usuario `root`. Además, una vez se ha copiado una clave SSH para el usuario `operador`, tampoco sería necesario habilitar el acceso con contraseña.
-
 ```ruby
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
+NonRootUser = 'operador'
+SSHKey = '~/.ssh/id_rsa.pub'
 
-$bootstrap = <<-SCRIPT
+$newUser = <<-SCRIPT
 #!/bin/bash
-
-# Enable ssh password authentication
-echo "Enable ssh password authentication"
-sed -i 's/^PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
-# No need for root SSH login
-# sed -i 's/.*PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
-systemctl reload sshd
-
 # Create operador user
-echo "Create user operador"
-useradd -s /bin/bash -m -G sudo -U operador
-echo "Set operador password"
-echo -e "admin\nadmin" | passwd operador >/dev/null 2>&1
- 
-# Set Root password
-echo "Set root password"
-echo -e "admin\nadmin" | passwd root >/dev/null 2>&1
+echo "Creating user #{NonRootUser} ..."
+useradd -s /bin/bash -m -G sudo -U #{NonRootUser}
 SCRIPT
 
 $passwordlessSudo = <<-SCRIPT
 #!/bin/bash
-
-echo "operador    ALL=(ALL) NOPASSWD:ALL" >> "/etc/sudoers.d/operador"
+echo "Configuring passwordless sudoer capability for #{NonRootUser} ..."
+echo "#{NonRootUser}    ALL=(ALL) NOPASSWD:ALL" >> "/etc/sudoers.d/#{NonRootUser}"
 SCRIPT
 
-$networkDevice = <<-SCRIPT
+$accessUsingSSHkey = <<-SCRIPT
 #!/bin/bash
-
-
+echo "Configuring passwordless SSH access for #{NonRootUser} ..."
+sudo su #{NonRootUser}
+sudo mkdir -p /home/#{NonRootUser}/.ssh/
+cat /tmp/tmp_id_rsa.pub >> /home/#{NonRootUser}/.ssh/authorized_keys
 SCRIPT
 
 Vagrant.configure("2") do |config|
@@ -118,23 +106,18 @@ Vagrant.configure("2") do |config|
       # Plugin vagrant-vbguest configuration
       node.vbguest.auto_update  = false
 
-      # Create user operador
-      node.vm.provision "shell", inline: $bootstrap
+      # Create non-root user
+      node.vm.provision "shell", inline: $newUser
       
-      # Passwordless sudo for "operador"
+      # Passwordless sudo for non-root user
       node.vm.provision "shell", inline: $passwordlessSudo
       
-      # Passwordless SSH access for operador
-      node.vm.provision "file", source: "~/.ssh/id_rsa.pub", destination: "/tmp/xavi.pub"
-      node.vm.provision "shell", inline: <<-SHELL
-        sudo su operador
-        sudo mkdir -p /home/operador/.ssh/
-        cat /tmp/xavi.pub >> /home/operador/.ssh/authorized_keys
-      SHELL
+      # Passwordless SSH access for non-root user
+      node.vm.provision "file", source: "#{SSHKey}", destination: "/tmp/tmp_id_rsa.pub"
+      node.vm.provision "shell", inline: $accessUsingSSHkey
     end
   end
 end
-
 ```
 
 ## Troubleshooting del aprovisionamiento con Vagrant
