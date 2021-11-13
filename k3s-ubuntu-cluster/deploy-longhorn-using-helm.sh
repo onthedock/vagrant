@@ -19,7 +19,7 @@ function getKubeconfig {
 }
 
 
-function isHelmAppInstalled {
+function installHelmChart {
     helmChart="$1"
     helmRepoChart="$2"
     chartNamespace="$3"
@@ -56,7 +56,7 @@ function main {
     helm repo add longhorn https://charts.longhorn.io
     helm repo update
     
-    isHelmAppInstalled "longhorn" "longhorn/longhorn" "longhorn-system"
+    installHelmChart "longhorn" "longhorn/longhorn" "longhorn-system"
     setDefaultStorageClass "longhorn"
 }
 
