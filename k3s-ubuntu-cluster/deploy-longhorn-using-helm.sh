@@ -35,6 +35,20 @@ function isHelmAppInstalled {
     fi
 }
 
+function setDefaultStorageClass {
+    defaultStorageClass="$1"
+    storageClassList=$(kubectl get storageclass -o name | awk -F '/' '{print $2}')
+
+    for storageclass in $storageClassList
+    do
+        if [ "$storageclass" != "$defaultStorageClass" ]
+        then
+            echo "Removing default storageClass for $storageclass"
+            kubectl patch storageclass $storageclass -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
+        fi
+    done
+}
+
 function main {
     getKubeconfig
 
@@ -43,6 +57,7 @@ function main {
     helm repo update
     
     isHelmAppInstalled "longhorn" "longhorn/longhorn" "longhorn-system"
+    setDefaultStorageClass "longhorn"
 }
 
 main
