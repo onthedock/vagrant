@@ -4,7 +4,7 @@ IPControlPlaneNode=192.168.1.101
 IPWorkerNode1=192.168.1.102
 IPWorkerNode2=192.168.1.103
 REMOTE_USER=operador
-K3S_VERSION="v1.22.4+k3s1"
+K3S_VERSION="v1.23.5+k3s1"
 
 # Install the ControlPlane
 k3sup install --ip $IPControlPlaneNode \
