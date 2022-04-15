@@ -30,6 +30,17 @@ function installHelmChart {
     fi
 }
 
+function waitForStorageClassToBeReady {
+    local storageClass="$1"
+    local timeToWait=2
+    while ! (kubectl get storageclass -o name | grep "$storageClass" 1>/dev/null)
+    do
+        printf "Waiting for storageClass %s to be ready (check again in %s seconds) ...\n" "$storageClass" "$timeToWait"
+        sleep $timeToWait
+    done
+    printf "storageClass %s is ready to be used\n" "$storageClass"
+}
+
 function setDefaultStorageClass {
     defaultStorageClass="$1"
     storageClassList=$(kubectl get storageclass -o name | awk -F '/' '{print $2}')
@@ -53,6 +64,7 @@ function main {
     helm repo update
 
     installHelmChart "longhorn" "longhorn/longhorn" "longhorn-system"
+    waitForStorageClassToBeReady "longhorn"    
     setDefaultStorageClass "longhorn"
 }
 
