@@ -26,7 +26,7 @@ function installHelmChart {
         echo "...Installing longhorn"
         helm install "$helmChart" "$helmRepoChart" --namespace "$chartNamespace" --create-namespace
     else
-        printf "... %s is already installed in the namespace %s" "$helmChart" "$chartNamespace"
+        printf "... %s is already installed in the namespace %s\n" "$helmChart" "$chartNamespace"
     fi
 }
 
