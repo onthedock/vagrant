@@ -23,7 +23,7 @@ function installHelmChart {
     checkRelease=$(helm status "$helmChart" --namespace "$chartNamespace" 2>/dev/null | grep -i status | awk '{ print $2 }')
 
     if [ "$checkRelease" != "deployed" ]; then
-        echo "[INFO] Installing Longhorn (using Helm)..."
+        printf "[INFO] Installing %s (using Helm)...\n" "$helmChart"
         helm install "$helmChart" "$helmRepoChart" --namespace "$chartNamespace" --create-namespace
     else
         printf "[INFO] %s is already installed in the namespace %s\n" "$helmChart" "$chartNamespace"
