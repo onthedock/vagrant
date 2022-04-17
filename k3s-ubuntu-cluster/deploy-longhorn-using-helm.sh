@@ -3,15 +3,15 @@
 function getKubeconfig {
     scriptDir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
     if test -f "kubeconfig"; then
-        printf "Using %s/kubeconfig\n" "$scriptDir"
+        printf "[INFO] Using %s/kubeconfig\n" "$scriptDir"
         export KUBECONFIG=$scriptDir/kubeconfig
     elif test -f "$HOME"/.kube/config; then
-        printf "Using default kubeconfig at %s/.kube/config\n" "$HOME"
+        printf "[INFO] Using default kubeconfig at %s/.kube/config\n" "$HOME"
     elif [[ -z "$KUBECONFIG" ]]; then
-        echo "ERROR - Unable to find a valid kubeconfig"
+        echo "[ERROR] Unable to find a valid kubeconfig"
         exit 1
     else
-        printf "Using \$KUBECONFIG=%s\n" "$KUBECONFIG"
+        printf "[INFO] Using \$KUBECONFIG=%s\n" "$KUBECONFIG"
     fi
 }
 
@@ -23,22 +23,24 @@ function installHelmChart {
     checkRelease=$(helm status "$helmChart" --namespace "$chartNamespace" 2>/dev/null | grep -i status | awk '{ print $2 }')
 
     if [ "$checkRelease" != "deployed" ]; then
-        echo "...Installing longhorn"
+        echo "[INFO] Installing Longhorn (using Helm)..."
         helm install "$helmChart" "$helmRepoChart" --namespace "$chartNamespace" --create-namespace
     else
-        printf "... %s is already installed in the namespace %s\n" "$helmChart" "$chartNamespace"
+        printf "[INFO] %s is already installed in the namespace %s\n" "$helmChart" "$chartNamespace"
     fi
 }
 
 function waitForStorageClassToBeReady {
     local storageClass="$1"
-    local timeToWait=2
+    local timeToWait=5
+    local t=0
     while ! (kubectl get storageclass -o name | grep "$storageClass" 1>/dev/null)
     do
-        printf "Waiting for storageClass %s to be ready (check again in %s seconds) ...\n" "$storageClass" "$timeToWait"
+        printf "[INFO] Waiting for storageClass %s to be ready (time elapsed %d seconds) ...\n" "$storageClass" "$t"
         sleep $timeToWait
+        t=$((t+timeToWait))
     done
-    printf "storageClass %s is ready to be used\n" "$storageClass"
+    printf "[INFO] storageClass %s is ready to be used\n" "$storageClass"
 }
 
 function setDefaultStorageClass {
@@ -47,10 +49,10 @@ function setDefaultStorageClass {
 
     for storageclass in $storageClassList; do
         if [ "$storageclass" = "$defaultStorageClass" ]; then
-            printf "Set default storageClass for %s\n" "$storageclass"
+            printf "[INFO ] Set default storageClass for %s\n" "$storageclass"
             kubectl patch storageclass "$storageclass" -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
         else
-            printf "Removing default storageClass for %s\n" "$storageclass"
+            printf "[INFO] Removing default storageClass for %s\n" "$storageclass"
             kubectl patch storageclass "$storageclass" -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
         fi
     done
