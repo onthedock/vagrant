@@ -41,7 +41,7 @@ function installHelmChart {
 }
 
 # kubectl get $(kubectl get pods -n gitea -l app=gitea -o name) -n gitea -o json | jq '.status.containerStatuses[0].ready'
-# kubectl get $(kubectl get pods -n gitea -l app=gitea -o name) -n gitea -o jsonpath='.status.containerStatuses[0].ready' 
+# kubectl get $(kubectl get pods -n gitea -l app=gitea -o name) -n gitea -o jsonpath='.status.containerStatuses[0].ready'
 
 function waitForGiteaToBeReady {
     helmChart="$1"
@@ -49,14 +49,52 @@ function waitForGiteaToBeReady {
     t=0
     timeToWait=5
     result=$(kubectl get pods -n $chartNamespace -l app=$helmChart -o jsonpath='{.items[].status.containerStatuses[].ready}')
-    while [[ "$result" != "true" ]]
-    do
+    while [[ "$result" != "true" ]]; do
         printf "Waiting for %s to be ready (time elapsed %d seconds) ...\n" "$helmChart" "$t"
         sleep "$timeToWait"
-        t=$((t+timeToWait))
+        t=$((t + timeToWait))
         result=$(kubectl get pods -n $chartNamespace -l app=$helmChart -o jsonpath='{.items[].status.containerStatuses[].ready}')
     done
     printf "[INFO] is %s ready" "$helmChart"
+}
+
+GITEA_API_URL='http://gitea.dev.lab/api/v1'
+HEADERS='Content-Type: application/json'
+
+function check_user {
+    local user="$1"
+    userExists=$(curl -s -H "$HEADERS" -k "$GITEA_API_URL/admin/users" -u "$admpsswd" | jq -r '.[].login' | grep -i "$user")
+    if [[ "$userExists" == "$user" ]]; then
+        echo 'true'
+    else
+        echo 'false'
+    fi
+}
+
+function createNonAdminUser {
+    local non_admin_user
+    local admpsswd
+    local payload
+    non_admin_user="$1"
+
+    admpsswd='gitea_admin:b65f599ef1015e93c2f7286c5eef7469465eb1ba'
+
+    cat >payload.json <<EOF
+        {
+            "email": "${non_admin_user}@dev.lab",
+            "username": "${non_admin_user}",
+            "password": "gitea",
+            "must_change_password": true
+        }
+EOF
+    payload=$(cat payload.json)
+    rm payload.json
+    if [[ $(check_user "$non_admin_user") != 'true' ]]; then
+        printf "[INFO] Creating user %s in Gitea ...\n" "$non_admin_user"
+        curl -s -X POST -H "$HEADERS" -k -d "$payload" -u "$admpsswd" "$GITEA_API_URL/admin/users" | jq
+    else
+        printf "[INFO] %s already exists in Gitea\n" "$non_admin_user"
+    fi
 }
 
 function main {
@@ -70,4 +108,6 @@ function main {
     waitForGiteaToBeReady "gitea" "gitea"
 }
 
-main
+# ----------------
+getKubeconfig
+createNonAdminUser "xavi"
