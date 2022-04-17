@@ -8,14 +8,14 @@ argocdLocalInstallManifest="argocd-install-stable-${argocdVersion}.yaml"
 # Descarga local de la versión estable del fichero de instalación
 if [[ -e ${argocdLocalInstallManifest} ]]
 then
-    echo "File ${argocdLocalInstallManifest} already exists"
+    echo "[INFO] File ${argocdLocalInstallManifest} already exists"
 else
     wget --output-document ${argocdLocalInstallManifest} ${argocdURL}
 fi
 
 if [[ -z $KUBECONFIG ]]
 then
-    echo "\$KUBECONFIG must be defined"
+    echo "[ERROR] \$KUBECONFIG must be defined"
     exit 1
 fi
 
@@ -43,9 +43,9 @@ do
     t=$((t+10))
 done
 
-echo "[INFO] ArgoCD server deployed."
+printf "[INFO] ArgoCD server deployed.\n\n"
 
-echo "[INFO] Configuring insecure access (using ConfigMap)..."
+echo "[INFO] Configuring non-TLS access (using ConfigMap)..."
 
 cat <<- EOF > argocd-cmd-params-cm.yaml
 apiVersion: v1
@@ -64,9 +64,10 @@ EOF
 
 kubectl apply -f argocd-cmd-params-cm.yaml
 rm argocd-cmd-params-cm.yaml
+printf "[INFO] Restarting ArgoCD server (to load non-TLS access configuration)\n"
 kubectl -n argocd rollout restart deploy argocd-server
 
-echo "[INFO] Deploy Ingress (argocd.dev.lab)"
+echo "[INFO] Deploying Ingress (argocd.dev.lab)..."
 
 cat <<- EOF > argocd-ingress-traefik.yaml
 ---
