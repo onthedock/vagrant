@@ -64,6 +64,10 @@ EOF
 
 kubectl apply -f argocd-cmd-params-cm.yaml
 rm argocd-cmd-params-cm.yaml
+
+printf "[INFO] Setting default admin password for ArgoCD Console Access to 'argocd-admin'\n"
+kubectl -n argocd patch secret argocd-secret -p '{"stringData": { "admin.password": "$2a$10$uzyTkoOPMhFAxu3qAFPSq.KX18BwYoFSJTGYMdz1lHiMeOfdg6DNu", "admin.passwordMtime": "'$(date +%FT%T%Z)'" }}'
+
 printf "[INFO] Restarting ArgoCD server (to load non-TLS access configuration)\n"
 kubectl -n argocd rollout restart deploy argocd-server
 
