@@ -1,0 +1,59 @@
+image:
+  pullPolicy: IfNotPresent
+
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    ingress.kubernetes.io/ssl-redirect: "false"
+
+  hosts:
+    - host: gitea.dev.lab
+      paths:
+        - path: /
+          pathType: Prefix
+
+gitea:
+  admin:
+    #existingSecret: gitea-admin-secret
+    username: gitea_admin
+    password: b65f599ef1015e93c2f7286c5eef7469465eb1ba
+    email: "gitea_admin@dev.lab"
+
+
+  config:
+    server:
+      LANDING_PAGE: login
+    service:
+      DISABLE_REGISTRATION: true
+
+  additionalConfigSources: []
+  #   - secret:
+  #       secretName: gitea-app-ini-oauth
+  #   - configMap:
+  #       name: gitea-app-ini-plaintext
+
+  additionalConfigFromEnvs: []
+
+# setting explicitly to false as memcached and postgresql enabled by default
+memcached:
+  enabled: false
+postgresql:
+  enabled: false
+
+mariadb:
+  enabled: true
+  auth:
+    database: gitea
+    username: gitea
+    password: cefae0ad029f2803f035d4fd74e67325b836c019
+    rootPassword: 2f601c154dd6e3063128ea63075e30e6effb00e3
+  primary:
+    service:
+      port: 3306
+    persistence:
+      size: 10Gi
+
+# By default, removed or moved settings that still remain in a user defined values.yaml will cause Helm to fail running the install/update.
+# Set it to false to skip this basic validation check.
+checkDeprecation: true
