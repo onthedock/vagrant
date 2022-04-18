@@ -15,10 +15,10 @@ ingress:
 
 gitea:
   admin:
-    #existingSecret: gitea-admin-secret
-    username: gitea_admin
-    password: b65f599ef1015e93c2f7286c5eef7469465eb1ba
-    email: "gitea_admin@dev.lab"
+    existingSecret: gitea-admin-secret
+    # username: gitea_admin
+    # password: b65f599ef1015e93c2f7286c5eef7469465eb1ba
+    # email: "gitea_admin@dev.lab"
 
 
   config:

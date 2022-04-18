@@ -15,6 +15,54 @@ function getKubeconfig {
     fi
 }
 
+function create_gitea_namespace {
+    local gitea_namespace
+    gitea_namespace="$1"
+    cat >gitea_namespace.yaml <<EOF
+apiVersion: v1
+kind: Namespace
+metadata:
+    name: ${gitea_namespace}
+EOF
+    kubectl apply -f gitea_namespace.yaml
+}
+
+function create_gitea_admin_secret {
+    local gitea_admin_username
+    local gitea_admin_password
+    local gitea_admin_default_password
+    local gitea_admin_secret_name
+    local gitea_namespace
+    gitea_admin_default_password='tempPassword'
+
+    gitea_admin_username="$1"
+    gitea_admin_password="$gitea_admin_default_password"
+    gitea_admin_secret_name="$2"
+    gitea_namespace="$3"
+
+    kubectl get secret "$gitea_admin_secret_name" --namespace "$gitea_namespace" 2>/dev/null
+    if [ $? -eq 0 ]; then
+        printf "[INFO] Secret %s already exists in namespace %s ...\n" "$gitea_admin_secret_name" "$gitea_namespace"
+        printf "\t(using existing values for Gitea Admin username and password)\n"
+        gitea_admin_username=$(kubectl get secret "$gitea_admin_secret_name" --namespace "$gitea_namespace" -o jsonpath='{.data.username}' | base64 --decode)
+        gitea_admin_password=$(kubectl get secret "$gitea_admin_secret_name" --namespace "$gitea_namespace" -o jsonpath='{.data.password}' | base64 --decode)
+    fi
+
+    cat >gitea_admin_secret.yaml <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+    name: ${gitea_admin_secret_name}
+type: Opaque
+stringData:
+    username: ${gitea_admin_username}
+    password: ${gitea_admin_password}
+EOF
+    printf "[INFO] Secret %s updated in namespace %s\n" "$gitea_admin_secret_name" "$gitea_namespace"
+    kubectl apply --namespace "$gitea_namespace" -f gitea_admin_secret.yaml
+    rm gitea_admin_secret.yaml
+}
+
 function installHelmChart {
     helmChart="$1"
     helmRepoChart="$2"
@@ -34,32 +82,26 @@ function installHelmChart {
         if [[ -n "$customValuesFile" ]]; then
             cmd="$cmd --values $customValuesFile"
         fi
-        helm install $helmChart $helmRepoChart --namespace $chartNamespace $cmd
+        helm install "$helmChart" "$helmRepoChart" --namespace "$chartNamespace" $cmd
     else
         printf "[INFO] %s is already installed in the namespace %s\n" "$helmChart" "$chartNamespace"
     fi
 }
-
-# kubectl get $(kubectl get pods -n gitea -l app=gitea -o name) -n gitea -o json | jq '.status.containerStatuses[0].ready'
-# kubectl get $(kubectl get pods -n gitea -l app=gitea -o name) -n gitea -o jsonpath='.status.containerStatuses[0].ready'
 
 function waitForGiteaToBeReady {
     helmChart="$1"
     chartNamespace="$2"
     t=0
     timeToWait=5
-    result=$(kubectl get pods -n $chartNamespace -l app=$helmChart -o jsonpath='{.items[].status.containerStatuses[].ready}')
+    result=$(kubectl get pods -n "$chartNamespace" -l app="$helmChart" -o jsonpath='{.items[].status.containerStatuses[].ready}' 2>/dev/null)
     while [[ "$result" != "true" ]]; do
         printf "Waiting for %s to be ready (time elapsed %d seconds) ...\n" "$helmChart" "$t"
         sleep "$timeToWait"
         t=$((t + timeToWait))
-        result=$(kubectl get pods -n $chartNamespace -l app=$helmChart -o jsonpath='{.items[].status.containerStatuses[].ready}')
+        result=$(kubectl get pods -n "$chartNamespace" -l app="$helmChart" -o jsonpath='{.items[].status.containerStatuses[].ready}')
     done
-    printf "[INFO] is %s ready" "$helmChart"
+    printf "[INFO] %s is ready\n" "$helmChart"
 }
-
-GITEA_API_URL='http://gitea.dev.lab/api/v1'
-HEADERS='Content-Type: application/json'
 
 function check_user {
     local user="$1"
@@ -97,17 +139,89 @@ EOF
     fi
 }
 
+GITEA_API_URL='http://gitea.dev.lab/api/v1'
+HEADERS='Content-Type: application/json'
+
+function validate_gitea_credentials {
+    local current_gitea_username
+    local current_gitea_password
+    local retries
+    current_gitea_username="$1"
+    current_gitea_password="$2"
+    retries=0
+
+    response_code=$(curl -o /dev/null -s -w "%{http_code}" -H "$HEADERS" -u "$current_gitea_username:$current_gitea_password" "$GITEA_API_URL/admin/users")
+    while [[ "$retries" -lt 3 ]]; do
+        sleep 1
+        retries=$((retries + 1))
+        response_code=$(curl -o /dev/null -s -w "%{http_code}" -H "$HEADERS" -u "$current_gitea_username:$current_gitea_password" "$GITEA_API_URL/admin/users")
+        if [[ "$response_code" -eq 200 ]]; then    
+            break
+        fi
+    done
+    if [[ "$response_code" -eq 200 ]]; then
+        echo 'ok'
+    else
+        echo 'ko'
+    fi
+}
+
+function update_gitea_admin_password {
+    # Only update the secret if it has been updated in Gitea
+    local gitea_admin_secret
+    local gitea_namespace
+    local current_gitea_username
+    local current_gitea_password
+    gitea_admin_secret="$1"
+    gitea_namespace="$2"
+
+    current_gitea_username=$(kubectl get secret "$gitea_admin_secret" --namespace "$gitea_namespace" -o jsonpath="{.data.username}" | base64 --decode)
+    current_gitea_password=$(kubectl get secret "$gitea_admin_secret" --namespace "$gitea_namespace" -o jsonpath="{.data.password}" | base64 --decode)
+
+    if [[ $(validate_gitea_credentials "$current_gitea_username" "$current_gitea_password") == 'ok' ]]; then
+        printf "[PLAN] Change credentials on GITEA\n"
+        new_password=$(openssl rand -hex 15)
+        payload=$(cat <<-EOF
+            {
+                "admin": true,
+                "password": "$new_password",
+                "login_name": "$current_gitea_username"
+            }
+EOF
+        )
+        response=$(curl -s -w "%{http_code}" -o /dev/null -X PATCH -H "$HEADERS" -k -u "$current_gitea_username:$current_gitea_password" -d "$payload" "$GITEA_API_URL/admin/users/$current_gitea_username")
+        if [[ "$response" -eq '200' ]]; then
+            printf "[INFO] Credentials for %s updated in Gitea...\n" "$current_gitea_username"
+            printf "\tCreating a backup of previous credentials...\n"
+            kubectl patch secret "$gitea_admin_secret" --namespace "$gitea_namespace" --patch "{\"stringData\": { \"backup.password\": \"$current_gitea_password\", \"backup.created\": \"'$(date +%FT%T%Z)'\" }}"
+            printf "\tUpdating the %s in the %s...\n" "$gitea_admin_secret" "$gitea_namespace"
+            kubectl patch secret "$gitea_admin_secret" --namespace "$gitea_namespace" --patch "{\"stringData\": { \"password\": \"$new_password\"}}"
+        fi
+    else
+        printf "[ERROR] Invalid credentials\n"
+    fi
+}
+
+
 function main {
     getKubeconfig
+
+    GITEA_NAMESPACE='gitea'
+    GITEA_ADMIN_NAME='gitea_admin'
+    GITEA_SECRET_NAME='gitea-admin-secret'
+    GITEA_HELM_RELEASE='gitea'
 
     # Those commands are idempotent
     helm repo add gitea-charts https://dl.gitea.io/charts/
     helm repo update
 
-    installHelmChart "gitea" "gitea-charts/gitea" "gitea" "gitea_custom_values.yaml"
-    waitForGiteaToBeReady "gitea" "gitea"
+    create_gitea_namespace "$GITEA_NAMESPACE"
+    create_gitea_admin_secret "$GITEA_ADMIN_NAME" "$GITEA_SECRET_NAME" "$GITEA_NAMESPACE"
+    installHelmChart "$GITEA_HELM_RELEASE" "gitea-charts/gitea" "$GITEA_NAMESPACE" "gitea_custom_values.yaml"
+    waitForGiteaToBeReady "$GITEA_HELM_RELEASE" "$GITEA_NAMESPACE"
+    update_gitea_admin_password "$GITEA_SECRET_NAME" "$GITEA_NAMESPACE"
+    # createNonAdminUser "xavi"
 }
 
 # ----------------
-getKubeconfig
-createNonAdminUser "xavi"
+main
