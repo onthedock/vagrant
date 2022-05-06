@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-function getKubeconfig {
+getKubeconfig() {
     scriptDir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
     if test -f "kubeconfig"; then
         printf "[INFO] Using %s/kubeconfig\n" "$scriptDir"
@@ -15,7 +15,7 @@ function getKubeconfig {
     fi
 }
 
-function create_gitea_namespace {
+create_gitea_namespace() {
     local gitea_namespace
     gitea_namespace="$1"
     cat >gitea_namespace.yaml <<EOF
@@ -27,7 +27,7 @@ EOF
     kubectl apply -f gitea_namespace.yaml
 }
 
-function create_gitea_admin_secret {
+create_gitea_admin_secret() {
     local gitea_admin_username
     local gitea_admin_password
     local gitea_admin_default_password
@@ -63,7 +63,7 @@ EOF
     rm gitea_admin_secret.yaml
 }
 
-function installHelmChart {
+installHelmChart() {
     helmChart="$1"
     helmRepoChart="$2"
     chartNamespace="$3"
@@ -88,7 +88,7 @@ function installHelmChart {
     fi
 }
 
-function waitForGiteaToBeReady {
+waitForGiteaToBeReady() {
     helmChart="$1"
     chartNamespace="$2"
     t=0
@@ -103,7 +103,7 @@ function waitForGiteaToBeReady {
     printf "[INFO] %s is ready\n" "$helmChart"
 }
 
-function check_user {
+check_user() {
     local user="$1"
     userExists=$(curl -s -H "$HEADERS" -k "$GITEA_API_URL/admin/users" -u "$admpsswd" | jq -r '.[].login' | grep -i "$user")
     if [[ "$userExists" == "$user" ]]; then
@@ -113,7 +113,7 @@ function check_user {
     fi
 }
 
-function createNonAdminUser {
+createNonAdminUser() {
     local non_admin_user
     local admpsswd
     local payload
@@ -142,7 +142,7 @@ EOF
 GITEA_API_URL='http://gitea.dev.lab/api/v1'
 HEADERS='Content-Type: application/json'
 
-function validate_gitea_credentials {
+validate_gitea_credentials() {
     local current_gitea_username
     local current_gitea_password
     local retries
@@ -166,7 +166,7 @@ function validate_gitea_credentials {
     fi
 }
 
-function update_gitea_admin_password {
+update_gitea_admin_password() {
     # Only update the secret if it has been updated in Gitea
     local gitea_admin_secret
     local gitea_namespace
@@ -203,7 +203,7 @@ EOF
 }
 
 
-function main {
+main() {
     getKubeconfig
 
     GITEA_NAMESPACE='gitea'

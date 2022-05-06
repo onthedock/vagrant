@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-function getKubeconfig {
+getKubeconfig() {
     scriptDir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
     if test -f "kubeconfig"; then
         printf "[INFO] Using %s/kubeconfig\n" "$scriptDir"
@@ -15,7 +15,7 @@ function getKubeconfig {
     fi
 }
 
-function installHelmChart {
+installHelmChart() {
     helmChart="$1"
     helmRepoChart="$2"
     chartNamespace="$3"
@@ -30,7 +30,7 @@ function installHelmChart {
     fi
 }
 
-function waitForStorageClassToBeReady {
+waitForStorageClassToBeReady() {
     local storageClass="$1"
     local timeToWait=5
     local t=0
@@ -43,7 +43,7 @@ function waitForStorageClassToBeReady {
     printf "[INFO] storageClass %s is ready to be used\n" "$storageClass"
 }
 
-function setDefaultStorageClass {
+setDefaultStorageClass() {
     defaultStorageClass="$1"
     storageClassList=$(kubectl get storageclass -o name | awk -F '/' '{print $2}')
 
@@ -58,7 +58,7 @@ function setDefaultStorageClass {
     done
 }
 
-function main {
+main() {
     getKubeconfig
 
     # Those commands are idempotent
