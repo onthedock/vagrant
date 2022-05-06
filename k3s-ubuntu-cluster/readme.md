@@ -4,5 +4,5 @@
 1. [Vagrant](docs/vagrant.md)
 1. [k3sup](docs/k3sup.md)
 1. [Longhorn - despliegue (usando Helm)](docs/longhorn.md)
-1. [ArgoCD - despliegue (DOC PENDING)](./readme.md)
+1. [ArgoCD - despliegue](./docs/argocd.md)
 1. [Gitea - despliegue (DOC PENDING)](./readme.md)

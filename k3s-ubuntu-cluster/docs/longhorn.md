@@ -1,5 +1,7 @@
 # Longhorn
 
+> Por algún motivo desconocido, en las pruebas de *despliegue automático* usando k3s, el despliegue falla.
+
 Desplegamos Longhorn usando la Helm chart oficial (sin ninguna personalización). Para ello, añadimos el repositorio y actualizamos:
 
 ```bash
