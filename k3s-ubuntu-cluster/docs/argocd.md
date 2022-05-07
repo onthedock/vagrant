@@ -20,7 +20,7 @@ Antes de seguir con el proceso de configuración, esperamos a que la réplica de
 
 En versiones recientes de ArgoCD es posible realizar la configuración de manera declarativa mediante *configMaps*.
 
-En nuestro caso, configuramos el acceso sin TLS (*acceso inserguro*) mediante el *configMap*:
+En nuestro caso, configuramos el acceso sin TLS (*acceso inseguro*) mediante el *configMap*:
 
 ```yaml
 apiVersion: v1
