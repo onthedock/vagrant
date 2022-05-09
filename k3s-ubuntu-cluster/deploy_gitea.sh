@@ -1,15 +1,10 @@
 #!/usr/bin/env bash
+declare -i E_KUBECONFIG_NOT_FOUND=1
 
 getKubeconfig() {
-    scriptDir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
-    if test -f "kubeconfig"; then
-        printf "[INFO] Using %s/kubeconfig\n" "$scriptDir"
-        export KUBECONFIG=$scriptDir/kubeconfig
-    elif test -f "$HOME"/.kube/config; then
-        printf "[INFO] Using default kubeconfig at %s/.kube/config\n" "$HOME"
-    elif [[ -z "$KUBECONFIG" ]]; then
+    if [[ -z "$KUBECONFIG" ]]; then
         echo "[ERROR] Unable to find a valid kubeconfig"
-        exit 1
+        exit $E_KUBECONFIG_NOT_FOUND
     else
         printf "[INFO] Using \$KUBECONFIG=%s\n" "$KUBECONFIG"
     fi
