@@ -13,13 +13,7 @@ getKubeconfig() {
 create_gitea_namespace() {
     local gitea_namespace
     gitea_namespace="$1"
-    cat >gitea_namespace.yaml <<EOF
-apiVersion: v1
-kind: Namespace
-metadata:
-    name: ${gitea_namespace}
-EOF
-    kubectl apply -f gitea_namespace.yaml
+    kubectl create namespace "${gitea_namespace}"
 }
 
 create_gitea_admin_secret() {
@@ -215,7 +209,7 @@ main() {
     installHelmChart "$GITEA_HELM_RELEASE" "gitea-charts/gitea" "$GITEA_NAMESPACE" "gitea_custom_values.yaml"
     waitForGiteaToBeReady "$GITEA_HELM_RELEASE" "$GITEA_NAMESPACE"
     update_gitea_admin_password "$GITEA_SECRET_NAME" "$GITEA_NAMESPACE"
-    createNonAdminUser "xavi"
+    # createNonAdminUser "xavi"
 }
 
 # ----------------
