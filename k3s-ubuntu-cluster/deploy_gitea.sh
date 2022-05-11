@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 declare -i E_KUBECONFIG_NOT_FOUND=1
 
-getKubeconfig() {
+get_kubeconfig() {
     if [[ -z "$KUBECONFIG" ]]; then
         echo "[ERROR] Unable to find a valid kubeconfig"
         exit $E_KUBECONFIG_NOT_FOUND
@@ -52,7 +52,7 @@ EOF
     rm gitea_admin_secret.yaml
 }
 
-installHelmChart() {
+install_helm_chart() {
     helmChart="$1"
     helmRepoChart="$2"
     chartNamespace="$3"
@@ -77,7 +77,7 @@ installHelmChart() {
     fi
 }
 
-waitForGiteaToBeReady() {
+wait_fo_gitea_to_be_ready() {
     helmChart="$1"
     chartNamespace="$2"
     t=0
@@ -102,7 +102,7 @@ check_user() {
     fi
 }
 
-createNonAdminUser() {
+create_non_admin_user() {
     local non_admin_user
     local admpsswd
     local payload
@@ -135,6 +135,7 @@ validate_gitea_credentials() {
     local current_gitea_username
     local current_gitea_password
     local retries
+    declare -i retries
     current_gitea_username="$1"
     current_gitea_password="$2"
     retries=0
@@ -193,7 +194,7 @@ EOF
 
 
 main() {
-    getKubeconfig
+    get_kubeconfig
 
     GITEA_NAMESPACE='gitea'
     GITEA_ADMIN_NAME='gitea_admin'
@@ -206,10 +207,10 @@ main() {
 
     create_gitea_namespace "$GITEA_NAMESPACE"
     create_gitea_admin_secret "$GITEA_ADMIN_NAME" "$GITEA_SECRET_NAME" "$GITEA_NAMESPACE"
-    installHelmChart "$GITEA_HELM_RELEASE" "gitea-charts/gitea" "$GITEA_NAMESPACE" "gitea_custom_values.yaml"
-    waitForGiteaToBeReady "$GITEA_HELM_RELEASE" "$GITEA_NAMESPACE"
+    install_helm_chart "$GITEA_HELM_RELEASE" "gitea-charts/gitea" "$GITEA_NAMESPACE" "gitea_custom_values.yaml"
+    wait_fo_gitea_to_be_ready "$GITEA_HELM_RELEASE" "$GITEA_NAMESPACE"
     update_gitea_admin_password "$GITEA_SECRET_NAME" "$GITEA_NAMESPACE"
-    # createNonAdminUser "xavi"
+    create_non_admin_user "xavi"
 }
 
 # ----------------
