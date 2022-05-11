@@ -215,7 +215,7 @@ main() {
     installHelmChart "$GITEA_HELM_RELEASE" "gitea-charts/gitea" "$GITEA_NAMESPACE" "gitea_custom_values.yaml"
     waitForGiteaToBeReady "$GITEA_HELM_RELEASE" "$GITEA_NAMESPACE"
     update_gitea_admin_password "$GITEA_SECRET_NAME" "$GITEA_NAMESPACE"
-    # createNonAdminUser "xavi"
+    createNonAdminUser "xavi"
 }
 
 # ----------------
