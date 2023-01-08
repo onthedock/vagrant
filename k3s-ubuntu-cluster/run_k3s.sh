@@ -62,3 +62,4 @@ source _k3s_cluster_install.sh
 check_k3s
 source _deploy_longhorn_using_helm.sh
 source _deploy_argo_cd.sh
+source _deploy_gitea.sh

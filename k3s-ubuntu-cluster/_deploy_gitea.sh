@@ -101,6 +101,9 @@ check_user() {
         echo 'false'
     fi
 }
+_get_gitea_admin_password() {
+    echo $(kubectl get -n gitea secrets gitea-admin-secret -o json | jq -r '.data.password' | base64 -d)
+}
 
 create_non_admin_user() {
     local non_admin_user
@@ -108,15 +111,16 @@ create_non_admin_user() {
     local payload
     non_admin_user="$1"
 
-    admpsswd='gitea_admin:b65f599ef1015e93c2f7286c5eef7469465eb1ba'
+    password="$(_get_gitea_admin_password)"
+    admpsswd="gitea_admin:$password"
 
-    cat >payload.json <<EOF
-        {
-            "email": "${non_admin_user}@dev.lab",
-            "username": "${non_admin_user}",
-            "password": "gitea",
-            "must_change_password": true
-        }
+    tee payload.json <<EOF
+    {
+        "email": "${non_admin_user}@dev.lab",
+        "username": "${non_admin_user}",
+        "password": "gitea",
+        "must_change_password": true
+    }
 EOF
     payload=$(cat payload.json)
     rm payload.json
