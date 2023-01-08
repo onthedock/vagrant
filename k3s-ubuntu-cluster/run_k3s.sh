@@ -58,7 +58,7 @@ check_k3s() {
 vagrant up
 check_vms
 
-source k3s_cluster_install.sh
+source _k3s_cluster_install.sh
 check_k3s
-source deploy_longhorn_using_helm.sh
-source deploy_argo_cd.sh
+source _deploy_longhorn_using_helm.sh
+source _deploy_argo_cd.sh
